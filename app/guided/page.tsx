@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { randomTopic } from '@/lib/topics';
 import { TopicHeader } from '@/components/guided/TopicHeader';
 import { StageEditor } from '@/components/guided/StageEditor';
 import { FeedbackPanel } from '@/components/guided/FeedbackPanel';
@@ -191,6 +192,12 @@ export default function GuidedPage() {
   const stageOrder = hasThirdBody ? EXTENDED_STAGE_ORDER : BASE_STAGE_ORDER;
   const currentStage = stages[currentStageId];
 
+  // Seed after mount (not in initial state) to avoid a hydration mismatch
+  // from Math.random on the prerendered page
+  useEffect(() => {
+    setTopicDraft((prev) => (prev === '' ? randomTopic() : prev));
+  }, []);
+
   async function handleGetFeedback() {
     const text = currentStage.userText;
     if (!text.trim()) return;
@@ -330,24 +337,34 @@ export default function GuidedPage() {
         <div className="w-full max-w-xl rounded-lg border bg-card p-8 shadow-sm">
           <h1 className="mb-1 text-xl font-semibold">Start a new session</h1>
           <p className="mb-5 text-sm text-muted-foreground">
-            Paste the IELTS Writing Task 2 question you are working on.
+            Here is a real Task 2 question to practise with. Try another, or replace it with your
+            own question.
           </p>
           <Textarea
             value={topicDraft}
             onChange={(e) => setTopicDraft(e.target.value)}
-            placeholder="e.g. Some people believe that universities should focus on providing academic knowledge, while others argue they should prepare students for the working world. Discuss both views and give your own opinion."
+            placeholder="Paste the IELTS Writing Task 2 question you are working on..."
             className="min-h-[100px] text-sm"
           />
-          <Button
-            className="mt-4 w-full"
-            disabled={topicDraft.trim().length < 10}
-            onClick={() => {
-              setTopic(topicDraft.trim());
-              setTopicSet(true);
-            }}
-          >
-            Start writing
-          </Button>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              className="sm:w-40"
+              onClick={() => setTopicDraft(randomTopic(topicDraft))}
+            >
+              Try another
+            </Button>
+            <Button
+              className="flex-1"
+              disabled={topicDraft.trim().length < 10}
+              onClick={() => {
+                setTopic(topicDraft.trim());
+                setTopicSet(true);
+              }}
+            >
+              Start writing
+            </Button>
+          </div>
         </div>
       </div>
     );

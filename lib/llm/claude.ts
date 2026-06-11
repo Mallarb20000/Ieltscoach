@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import type { AnalysisProvider, StageInput, StageFeedback, FullEssayFeedback } from './adapter';
-import { StageFeedbackSchema } from '@/lib/validation/schemas';
+import { StageFeedbackSchema, FullEssayFeedbackSchema } from '@/lib/validation/schemas';
 
 const client = new Anthropic();
 
@@ -98,7 +98,42 @@ export class ClaudeProvider implements AnalysisProvider {
     return StageFeedbackSchema.parse(parsed);
   }
 
-  async fullEssayFeedback(_prompt: string, _essay: string): Promise<FullEssayFeedback> {
-    throw new Error('fullEssayFeedback not implemented yet');
+  async fullEssayFeedback(
+    prompt: string,
+    essay: string,
+    extraInstruction?: string
+  ): Promise<FullEssayFeedback> {
+    const rubric = loadRubric();
+    const essayPrompt = loadPrompt('unguided/full-essay.md');
+    const systemContent = `${rubric}\n\n---\n\n${essayPrompt}`;
+
+    const parts = [
+      `IELTS Task 2 prompt: ${prompt}`,
+      `Student's complete essay:\n${essay}`,
+    ];
+    if (extraInstruction) {
+      parts.push(`CORRECTION REQUIRED: ${extraInstruction}`);
+    }
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system: [
+        {
+          type: 'text',
+          text: systemContent,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [{ role: 'user', content: parts.join('\n\n') }],
+    });
+
+    const raw = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => (b as { type: 'text'; text: string }).text)
+      .join('');
+
+    const parsed = parseJsonResponse(raw);
+    return FullEssayFeedbackSchema.parse(parsed);
   }
 }

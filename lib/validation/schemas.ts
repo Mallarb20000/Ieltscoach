@@ -38,3 +38,18 @@ export const HookFeedbackSchema = StageFeedbackSchema.extend({
     'statistic', 'claim', 'question', 'definition', 'scenario', 'generic', 'none'
   ]),
 });
+
+export const FullEssayFeedbackSchema = z.object({
+  bands: z.object({
+    TR: BandScoreSchema,
+    CC: BandScoreSchema,
+    LR: BandScoreSchema,
+    GRA: BandScoreSchema,
+    overall: BandScoreSchema,
+  }),
+  paragraphFeedback: z.array(z.object({
+    paragraph: z.string().min(1),
+    findings: z.array(FindingSchema),
+  })),
+  topImprovements: z.array(z.string().min(1)),
+});

@@ -49,7 +49,7 @@ export interface Finding {
 export interface AnalysisProvider {
   name: string;
   guidedFeedback(input: StageInput, extraInstruction?: string): Promise<StageFeedback>;
-  fullEssayFeedback(prompt: string, essay: string): Promise<FullEssayFeedback>;
+  fullEssayFeedback(prompt: string, essay: string, extraInstruction?: string): Promise<FullEssayFeedback>;
 }
 
 export interface FullEssayFeedback {

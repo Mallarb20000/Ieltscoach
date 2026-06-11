@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import type { AnalysisProvider, StageInput, StageFeedback, FullEssayFeedback } from './adapter';
-import { StageFeedbackSchema } from '@/lib/validation/schemas';
+import { StageFeedbackSchema, FullEssayFeedbackSchema } from '@/lib/validation/schemas';
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '');
 
@@ -90,7 +90,32 @@ export class GeminiProvider implements AnalysisProvider {
     return StageFeedbackSchema.parse(parsed);
   }
 
-  async fullEssayFeedback(_prompt: string, _essay: string): Promise<FullEssayFeedback> {
-    throw new Error('fullEssayFeedback not implemented yet');
+  async fullEssayFeedback(
+    prompt: string,
+    essay: string,
+    extraInstruction?: string
+  ): Promise<FullEssayFeedback> {
+    const rubric = loadRubric();
+    const essayPrompt = loadPrompt('unguided/full-essay.md');
+    const systemInstruction = `${rubric}\n\n---\n\n${essayPrompt}`;
+
+    const parts = [
+      `IELTS Task 2 prompt: ${prompt}`,
+      `Student's complete essay:\n${essay}`,
+    ];
+    if (extraInstruction) {
+      parts.push(`CORRECTION REQUIRED: ${extraInstruction}`);
+    }
+
+    const model = genai.getGenerativeModel({
+      model: MODEL_ID,
+      systemInstruction,
+    });
+
+    const result = await model.generateContent(parts.join('\n\n'));
+    const raw = result.response.text();
+
+    const parsed = parseJsonResponse(raw);
+    return FullEssayFeedbackSchema.parse(parsed);
   }
 }

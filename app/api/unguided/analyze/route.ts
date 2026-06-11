@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getProvider } from '@/lib/llm/select';
 import { getValidatedEssayFeedback } from '@/lib/validation/retry';
+import { checkRateLimit, clientKey } from '@/lib/rate-limit';
+
+export const maxDuration = 120;
 
 const MIN_ESSAY_WORDS = 250;
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
 
 const AnalyzeRequestSchema = z.object({
-  prompt: z.string().min(10),
-  essay: z.string().min(1),
+  prompt: z.string().min(10).max(2_000),
+  essay: z.string().min(1).max(12_000),
 });
 
 function wordCount(text: string): number {
@@ -15,6 +20,16 @@ function wordCount(text: string): number {
 }
 
 export async function POST(req: NextRequest) {
+  const limit = checkRateLimit(`unguided:${clientKey(req)}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: `Too many analysis requests. Wait about ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s) and try again.`,
+      },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getProvider } from '@/lib/llm/select';
 import { getValidatedFeedback } from '@/lib/validation/retry';
+import { checkRateLimit, clientKey } from '@/lib/rate-limit';
 import type { StageInput } from '@/lib/llm/adapter';
+
+export const maxDuration = 120;
+
+const RATE_LIMIT = 30;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
 
 const StageIdSchema = z.enum([
   'hook',
@@ -20,19 +26,29 @@ const StageIdSchema = z.enum([
 
 const StageInputSchema = z.object({
   stage: StageIdSchema,
-  prompt: z.string().min(1),
-  userText: z.string().min(1),
+  prompt: z.string().min(1).max(2_000),
+  userText: z.string().min(1).max(12_000),
   priorContext: z.object({
-    hook: z.string().optional(),
-    thesis: z.string().optional(),
-    bridge: z.string().optional(),
-    topicSentences: z.array(z.string()).optional(),
-    bodyParagraphs: z.array(z.string()).optional(),
-    conclusion: z.string().optional(),
+    hook: z.string().max(2_000).optional(),
+    thesis: z.string().max(2_000).optional(),
+    bridge: z.string().max(2_000).optional(),
+    topicSentences: z.array(z.string().max(2_000)).max(3).optional(),
+    bodyParagraphs: z.array(z.string().max(4_000)).max(3).optional(),
+    conclusion: z.string().max(2_000).optional(),
   }),
 });
 
 export async function POST(req: NextRequest) {
+  const limit = checkRateLimit(`guided:${clientKey(req)}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: `Too many feedback requests. Wait about ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s) and try again.`,
+      },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

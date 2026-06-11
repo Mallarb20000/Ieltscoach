@@ -29,7 +29,9 @@ function FindingCard({ finding }: { finding: Finding }) {
         finding.severity === 'major' ? 'border-l-destructive/50' : 'border-l-primary/30'
       }`}
     >
-      <p className="mb-1 font-serif italic text-muted-foreground">"{finding.evidenceQuote}"</p>
+      <p className="mb-1 font-serif italic text-muted-foreground">
+        &ldquo;{finding.evidenceQuote}&rdquo;
+      </p>
       <p className="font-medium">{finding.issue}</p>
       <p className="mt-0.5 text-muted-foreground">{finding.suggestion}</p>
       <div className="mt-2 flex gap-1.5">

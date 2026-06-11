@@ -55,10 +55,10 @@ function MarkedEssayPreview() {
 
         <div className="mt-4 rounded-md border border-l-2 border-l-destructive/50 bg-muted/40 p-3">
           <p className="font-serif text-xs italic text-muted-foreground">
-            "This is why mobility benefit the country."
+            &ldquo;This is why mobility benefit the country.&rdquo;
           </p>
           <p className="mt-1 text-xs font-medium">
-            Subject-verb agreement: "mobility benefits".
+            Subject-verb agreement: &ldquo;mobility benefits&rdquo;.
           </p>
           <div className="mt-1.5 flex gap-1">
             <span className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
@@ -149,6 +149,86 @@ export default function Home() {
           Band scores are AI estimates only, not official IELTS results.
         </p>
       </main>
+
+      <section className="border-t bg-card/60">
+        <div className="mx-auto w-full max-w-5xl px-6 py-16">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            How it works
+          </p>
+          <h2 className="mt-3 font-display text-3xl font-medium tracking-tight">
+            From blank page to marked essay
+          </h2>
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <div key={step.title} className="rounded-xl border bg-card p-6 shadow-sm">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-display text-sm font-semibold text-primary-foreground">
+                  {i + 1}
+                </span>
+                <h3 className="mt-4 font-display text-lg font-semibold">{step.title}</h3>
+                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{step.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 flex flex-col items-start gap-3 rounded-xl border border-primary/25 bg-accent/50 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-display text-lg font-semibold text-accent-foreground">
+                Keep every report. Watch your band climb.
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                A free account saves each session to your dashboard and plots your scores over
+                time.
+              </p>
+            </div>
+            <Link
+              href="/signup"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+            >
+              Create a free account
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t">
+        <div className="mx-auto flex w-full max-w-5xl flex-col items-start justify-between gap-4 px-6 py-8 sm:flex-row sm:items-center">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-base font-semibold tracking-tight">
+              Writing Coach
+            </span>
+            <span className="h-1 w-1 rounded-full bg-primary" />
+            <span className="text-xs text-muted-foreground">Built for Nepal</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <Link href="/guided" className="transition-colors hover:text-foreground">
+              Guided Mode
+            </Link>
+            <Link href="/unguided" className="transition-colors hover:text-foreground">
+              Full Analysis
+            </Link>
+            <Link href="/signup" className="transition-colors hover:text-foreground">
+              Create account
+            </Link>
+          </nav>
+          <p className="text-xs text-muted-foreground">
+            AI estimates only — not official IELTS results.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
+
+const STEPS = [
+  {
+    title: 'Build it piece by piece',
+    body: 'Start with a real Task 2 question. Write your hook, bridge, thesis, body paragraphs, and conclusion one stage at a time, with feedback before you move on.',
+  },
+  {
+    title: 'Proof in your own words',
+    body: 'Every finding quotes your exact sentence — no vague advice, no invented praise. Fix the line it points at and request another round.',
+  },
+  {
+    title: 'Synthesize and track',
+    body: 'Assemble the full essay, get band estimates for all four criteria, and save the report to your dashboard to watch your scores climb session by session.',
+  },
+];

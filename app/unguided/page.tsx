@@ -2,9 +2,13 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import type { FullEssayFeedback, Finding } from '@/lib/llm/adapter';
+import { EssayAnalysis } from '@/components/unguided/EssayAnalysis';
+import { SaveReportStatus, type SaveState } from '@/components/shared/SaveReportStatus';
+import { saveReport } from '@/lib/reports';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { useUser } from '@/lib/auth/use-user';
+import type { FullEssayFeedback } from '@/lib/llm/adapter';
 
 const MIN_ESSAY_WORDS = 250;
 
@@ -12,23 +16,48 @@ function wordCount(text: string): number {
   return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 }
 
-const criterionLabels: Record<Finding['rubricCriterion'], string> = {
-  TR: 'Task Response',
-  CC: 'Coherence & Cohesion',
-  LR: 'Lexical Resource',
-  GRA: 'Grammatical Range',
-};
-
 export default function UnguidedPage() {
   const [prompt, setPrompt] = useState('');
   const [essay, setEssay] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FullEssayFeedback | null>(null);
+  const { user } = useUser();
+  const [saveState, setSaveState] = useState<SaveState | null>(null);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
 
   const words = wordCount(essay);
   const tooShort = words > 0 && words < MIN_ESSAY_WORDS;
   const canSubmit = prompt.trim().length >= 10 && words >= MIN_ESSAY_WORDS && !loading;
+
+  async function persistReport(feedback: FullEssayFeedback, essayText: string) {
+    if (!isSupabaseConfigured()) return;
+    if (!user) {
+      setSaveState('guest');
+      return;
+    }
+    setSaveState('saving');
+    try {
+      const saved = await saveReport(
+        {
+          mode: 'unguided',
+          topic: prompt.trim(),
+          essay: essayText,
+          wordCount: wordCount(essayText),
+          bands: feedback.bands,
+          feedback,
+        },
+        savedReportId
+      );
+      if (saved) {
+        setSavedReportId(saved.id);
+        setSaveState('saved');
+      }
+    } catch (err) {
+      console.error('Save report error:', err);
+      setSaveState('error');
+    }
+  }
 
   async function handleAnalyze() {
     setLoading(true);
@@ -43,12 +72,17 @@ export default function UnguidedPage() {
       });
 
       if (!res.ok) {
-        const body = (await res.json()) as { error?: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if ((res.status === 429 || res.status === 400) && body.error) {
+          setError(body.error);
+          return;
+        }
         throw new Error(body.error ?? 'Unknown error');
       }
 
       const { data } = (await res.json()) as { data: { feedback: FullEssayFeedback } };
       setResult(data.feedback);
+      void persistReport(data.feedback, essay);
     } catch (err) {
       console.error('Analyze error:', err);
       setError(
@@ -96,6 +130,7 @@ export default function UnguidedPage() {
             onChange={(e) => {
               setEssay(e.target.value);
               setResult(null);
+              setSaveState(null);
             }}
             placeholder="Paste or type your full essay here..."
             className="min-h-[260px] font-serif text-[15px] leading-7"
@@ -129,105 +164,14 @@ export default function UnguidedPage() {
           </div>
         )}
 
-        {result && <AnalysisResult result={result} />}
-      </div>
-    </div>
-  );
-}
+        {result && saveState && (
+          <SaveReportStatus
+            state={saveState}
+            onRetry={() => result && persistReport(result, essay)}
+          />
+        )}
 
-function AnalysisResult({ result }: { result: FullEssayFeedback }) {
-  return (
-    <div className="flex flex-col gap-5">
-      <div className="animate-rise rounded-xl border bg-card p-6 shadow-sm">
-        <h2 className="mb-4 font-display text-lg font-semibold">Band Score Estimates</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {(['TR', 'CC', 'LR', 'GRA'] as const).map((criterion) => (
-            <div key={criterion} className="rounded-lg border p-3 text-center">
-              <p className="text-xs font-medium text-muted-foreground">{criterion}</p>
-              <p className="mt-1 font-display text-2xl font-semibold">
-                {result.bands[criterion].toFixed(1)}
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 rounded-lg bg-primary p-4 text-center text-primary-foreground">
-          <p className="text-xs font-medium uppercase tracking-wider opacity-80">
-            Overall Estimate
-          </p>
-          <p className="mt-1 font-display text-4xl font-semibold">
-            {result.bands.overall.toFixed(1)}
-          </p>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          These are AI estimates only — not official IELTS scores. Verify with a qualified
-          examiner.
-        </p>
-      </div>
-
-      {result.topImprovements.length > 0 && (
-        <div className="animate-rise rise-1 rounded-xl border bg-card p-6 shadow-sm">
-          <h2 className="mb-3 font-display text-lg font-semibold">Top Improvements</h2>
-          <ol className="flex flex-col gap-2">
-            {result.topImprovements.map((tip, i) => (
-              <li key={i} className="flex gap-2 text-sm">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                  {i + 1}
-                </span>
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      <div className="animate-rise rise-2 rounded-xl border bg-card p-6 shadow-sm">
-        <h2 className="mb-4 font-display text-lg font-semibold">Paragraph Feedback</h2>
-        <div className="flex flex-col gap-6">
-          {result.paragraphFeedback.map((pf, i) => (
-            <div key={i}>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                Paragraph {i + 1}
-              </p>
-              <p className="mb-2.5 rounded-md border-l-2 border-l-primary/30 bg-muted/40 p-3 font-serif text-sm leading-7">
-                {pf.paragraph}
-              </p>
-              {pf.findings.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No issues found.</p>
-              ) : (
-                <div className="flex flex-col gap-2.5">
-                  {pf.findings.map((f, j) => (
-                    <div
-                      key={j}
-                      className={`rounded-md border border-l-2 bg-muted/30 p-3 text-sm ${
-                        f.severity === 'major' ? 'border-l-destructive/50' : 'border-l-primary/30'
-                      }`}
-                    >
-                      <p className="mb-1 font-serif italic text-muted-foreground">
-                        "{f.evidenceQuote}"
-                      </p>
-                      <p className="font-medium">{f.issue}</p>
-                      <p className="mt-0.5 text-muted-foreground">{f.suggestion}</p>
-                      <div className="mt-2 flex gap-1.5">
-                        <Badge variant="outline" className="text-xs">
-                          {criterionLabels[f.rubricCriterion]}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${f.severity === 'major' ? 'border-red-300 text-red-700' : 'border-gray-300'}`}
-                        >
-                          {f.severity}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Verify any statistics or claims in suggestions before applying them.
-        </p>
+        {result && <EssayAnalysis result={result} />}
       </div>
     </div>
   );

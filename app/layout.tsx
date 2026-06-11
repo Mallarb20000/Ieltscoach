@@ -15,9 +15,19 @@ const schibsted = Schibsted_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "IELTS Writing Coach",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  title: {
+    default: "IELTS Writing Coach",
+    template: "%s",
+  },
   description:
     "Step-by-step IELTS Writing Task 2 feedback for Nepali students. Build your essay one section at a time, or get a full analysis with band score estimates.",
+  openGraph: {
+    title: "IELTS Writing Coach",
+    description:
+      "Step-by-step IELTS Writing Task 2 feedback for Nepali students. Every piece of feedback quotes your own words.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

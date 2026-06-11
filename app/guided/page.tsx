@@ -1,16 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { randomTopic } from '@/lib/topics';
 import { TopicHeader } from '@/components/guided/TopicHeader';
 import { StageEditor } from '@/components/guided/StageEditor';
 import { FeedbackPanel } from '@/components/guided/FeedbackPanel';
 import { FinalReport, type ReportSection } from '@/components/guided/FinalReport';
 import { StageTracker } from '@/components/guided/StageTracker';
+import { MobileProgress } from '@/components/guided/MobileProgress';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { StageFeedback, StageId } from '@/lib/llm/adapter';
-import type { StageState, StageData } from '@/types/stages';
+import type { StageData } from '@/types/stages';
+import { saveReport } from '@/lib/reports';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { useUser } from '@/lib/auth/use-user';
+import { SaveReportStatus, type SaveState } from '@/components/shared/SaveReportStatus';
 
 type SessionStages = Record<StageId, StageData>;
 
@@ -126,6 +131,22 @@ function isDone(s: StageData): boolean {
   return s.state === 'approved' || s.state === 'warned_pass';
 }
 
+// The seeded practice question is random, so it can only be chosen on the
+// client — the server prerender shows an empty field until hydration
+const subscribeNoop = () => () => {};
+let cachedDefaultTopic: string | null = null;
+
+function useDefaultTopic(): string {
+  const hydrated = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false
+  );
+  if (!hydrated) return '';
+  cachedDefaultTopic ??= randomTopic();
+  return cachedDefaultTopic;
+}
+
 function buildPriorContext(stages: SessionStages, currentStage: StageId) {
   const ctx: {
     hook?: string;
@@ -178,9 +199,11 @@ function assembleEssay(stages: SessionStages): string {
 
 export default function GuidedPage() {
   const [topic, setTopic] = useState('');
-  const [topicDraft, setTopicDraft] = useState('');
+  const [topicDraft, setTopicDraft] = useState<string | null>(null);
   const [topicSet, setTopicSet] = useState(false);
   const [editingTopic, setEditingTopic] = useState(false);
+  const defaultTopic = useDefaultTopic();
+  const draftValue = topicDraft ?? defaultTopic;
 
   const [stages, setStages] = useState<SessionStages>(initialStages);
   const [currentStageId, setCurrentStageId] = useState<StageId>('hook');
@@ -189,15 +212,12 @@ export default function GuidedPage() {
   const [loading, setLoading] = useState(false);
   const [warnConfirm, setWarnConfirm] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const { user } = useUser();
+  const [saveState, setSaveState] = useState<SaveState | null>(null);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
 
   const stageOrder = hasThirdBody ? EXTENDED_STAGE_ORDER : BASE_STAGE_ORDER;
   const currentStage = stages[currentStageId];
-
-  // Seed after mount (not in initial state) to avoid a hydration mismatch
-  // from Math.random on the prerendered page
-  useEffect(() => {
-    setTopicDraft((prev) => (prev === '' ? randomTopic() : prev));
-  }, []);
 
   async function handleGetFeedback() {
     const text = currentStage.userText;
@@ -221,7 +241,11 @@ export default function GuidedPage() {
       });
 
       if (!res.ok) {
-        const body = (await res.json()) as { error: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if (res.status === 429 && body.error) {
+          setFeedbackError(body.error);
+          return;
+        }
         throw new Error(body.error ?? 'Unknown error');
       }
 
@@ -234,6 +258,7 @@ export default function GuidedPage() {
           turns: prev[currentStageId].turns + 1,
         },
       }));
+      if (currentStageId === 'synthesis') void persistReport(data.feedback, text);
     } catch (err) {
       console.error('Feedback error:', err);
       setFeedbackError(
@@ -242,6 +267,43 @@ export default function GuidedPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function persistReport(feedback: StageFeedback, essayText: string) {
+    if (!isSupabaseConfigured()) return;
+    if (!user) {
+      setSaveState('guest');
+      return;
+    }
+    setSaveState('saving');
+    try {
+      const result = await saveReport(
+        {
+          mode: 'guided',
+          topic,
+          essay: essayText,
+          wordCount: essayText.trim() === '' ? 0 : essayText.trim().split(/\s+/).length,
+          bands: feedback.bands ?? null,
+          feedback,
+          sections: stageOrder
+            .filter((id) => id !== 'synthesis')
+            .map((id) => ({ id, label: STAGE_LABELS[id], text: stages[id].userText })),
+        },
+        savedReportId
+      );
+      if (result) {
+        setSavedReportId(result.id);
+        setSaveState('saved');
+      }
+    } catch (err) {
+      console.error('Save report error:', err);
+      setSaveState('error');
+    }
+  }
+
+  function retrySaveReport() {
+    const feedback = stages.synthesis.feedback;
+    if (feedback) void persistReport(feedback, stages.synthesis.userText);
   }
 
   function advanceToNext(fromId: StageId, newState: 'approved' | 'warned_pass') {
@@ -318,6 +380,21 @@ export default function GuidedPage() {
     setCurrentStageId('conclusion');
   }
 
+  function openSynthesis() {
+    setCurrentStageId('synthesis');
+    setStages((prev) => ({
+      ...prev,
+      synthesis: {
+        ...prev.synthesis,
+        state: 'in_progress',
+        userText:
+          prev.synthesis.userText.trim() === ''
+            ? assembleEssay(prev)
+            : prev.synthesis.userText,
+      },
+    }));
+  }
+
   const canSynthesize = stageOrder
     .filter((id) => id !== 'synthesis')
     .every((id) => isDone(stages[id]));
@@ -347,7 +424,7 @@ export default function GuidedPage() {
             own question.
           </p>
           <Textarea
-            value={topicDraft}
+            value={draftValue}
             onChange={(e) => setTopicDraft(e.target.value)}
             placeholder="Paste the IELTS Writing Task 2 question you are working on..."
             className="min-h-[100px] text-sm"
@@ -356,15 +433,15 @@ export default function GuidedPage() {
             <Button
               variant="outline"
               className="sm:w-40"
-              onClick={() => setTopicDraft(randomTopic(topicDraft))}
+              onClick={() => setTopicDraft(randomTopic(draftValue))}
             >
               Try another
             </Button>
             <Button
               className="flex-1"
-              disabled={topicDraft.trim().length < 10}
+              disabled={draftValue.trim().length < 10}
               onClick={() => {
-                setTopic(topicDraft.trim());
+                setTopic(draftValue.trim());
                 setTopicSet(true);
               }}
             >
@@ -382,7 +459,8 @@ export default function GuidedPage() {
         <div className="animate-rise w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm">
           <h1 className="mb-1 font-display text-2xl font-semibold">Edit prompt</h1>
           <Textarea
-            value={topicDraft || topic}
+            value={topicDraft ?? topic}
+            placeholder="Your Task 2 question"
             onChange={(e) => setTopicDraft(e.target.value)}
             className="min-h-[100px] text-sm"
           />
@@ -414,6 +492,16 @@ export default function GuidedPage() {
           setEditingTopic(true);
         }}
       />
+
+      <div className="border-b md:hidden print:hidden">
+        <MobileProgress
+          stages={trackerStages}
+          currentStageId={currentStageId}
+          onStageClick={handleStageClick}
+          canSynthesize={canSynthesize}
+          onSynthesize={openSynthesis}
+        />
+      </div>
 
       <div className="flex flex-1 overflow-hidden print:block print:overflow-visible">
         <main className="flex-1 overflow-y-auto p-6 print:overflow-visible print:p-0">
@@ -460,6 +548,9 @@ export default function GuidedPage() {
                 loading={loading}
                 turns={currentStage.turns}
                 onGetSynthesis={handleGetFeedback}
+                statusSlot={
+                  saveState && <SaveReportStatus state={saveState} onRetry={retrySaveReport} />
+                }
               />
             ) : (
               <>
@@ -512,26 +603,13 @@ export default function GuidedPage() {
           </div>
         </main>
 
-        <aside className="w-56 shrink-0 overflow-y-auto border-l print:hidden">
+        <aside className="hidden w-56 shrink-0 overflow-y-auto border-l md:block print:hidden">
           <StageTracker
             stages={trackerStages}
             currentStageId={currentStageId}
             onStageClick={handleStageClick}
             canSynthesize={canSynthesize}
-            onSynthesize={() => {
-              setCurrentStageId('synthesis');
-              setStages((prev) => ({
-                ...prev,
-                synthesis: {
-                  ...prev.synthesis,
-                  state: 'in_progress',
-                  userText:
-                    prev.synthesis.userText.trim() === ''
-                      ? assembleEssay(prev)
-                      : prev.synthesis.userText,
-                },
-              }));
-            }}
+            onSynthesize={openSynthesis}
           />
         </aside>
       </div>
@@ -577,6 +655,7 @@ interface SynthesisPanelProps {
   loading: boolean;
   turns: number;
   onGetSynthesis: () => void;
+  statusSlot?: React.ReactNode;
 }
 
 function SynthesisPanel({
@@ -589,6 +668,7 @@ function SynthesisPanel({
   loading,
   turns,
   onGetSynthesis,
+  statusSlot,
 }: SynthesisPanelProps) {
   const turnsExhausted = turns >= MAX_TURNS;
   const essayWordCount = draft.trim() === '' ? 0 : draft.trim().split(/\s+/).length;
@@ -640,6 +720,7 @@ function SynthesisPanel({
         </div>
       </div>
 
+      {feedback && statusSlot}
       {feedback && (
         <FinalReport topic={topic} draft={draft} sections={sections} feedback={feedback} />
       )}

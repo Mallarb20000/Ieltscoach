@@ -1,4 +1,7 @@
+'use client';
+
 import { FeedbackPanel } from '@/components/guided/FeedbackPanel';
+import { Button } from '@/components/ui/button';
 import type { StageFeedback } from '@/lib/llm/adapter';
 
 export interface ReportSection {
@@ -8,6 +11,7 @@ export interface ReportSection {
 }
 
 interface Props {
+  topic: string;
   draft: string;
   sections: ReportSection[];
   feedback: StageFeedback;
@@ -65,16 +69,40 @@ function segmentDraft(draft: string, sections: ReportSection[]): Segment[] {
   return segments;
 }
 
-export function FinalReport({ draft, sections, feedback }: Props) {
+export function FinalReport({ topic, draft, sections, feedback }: Props) {
   const segments = segmentDraft(draft, sections);
   const matchedIds = new Set(
     segments.filter((s) => s.section !== null).map((s) => s.section!.id)
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div data-final-report className="flex flex-col gap-5">
+      <div className="hidden border-b pb-4 print:block">
+        <div className="flex items-baseline justify-between">
+          <p className="font-display text-2xl font-semibold">Final Report</p>
+          <p className="text-xs text-muted-foreground">
+            IELTS Writing Coach &middot;{' '}
+            {new Date().toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </p>
+        </div>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Task 2 question
+        </p>
+        <p className="mt-1 font-serif text-sm leading-6">{topic}</p>
+      </div>
+
+      <div className="flex items-center justify-between print:hidden">
+        <h3 className="font-display text-lg font-semibold">Final Report</h3>
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          Download PDF
+        </Button>
+      </div>
       {feedback.bands && (
-        <div className="animate-rise rounded-xl border bg-card p-6 shadow-sm">
+        <div className="animate-rise rounded-xl border bg-card p-6 shadow-sm print:break-inside-avoid print:border-0 print:p-0 print:shadow-none">
           <h3 className="mb-4 font-display text-lg font-semibold">Band Score Estimates</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {(['TR', 'CC', 'LR', 'GRA'] as const).map((criterion) => (
@@ -101,7 +129,7 @@ export function FinalReport({ draft, sections, feedback }: Props) {
         </div>
       )}
 
-      <div className="animate-rise rise-1 rounded-xl border bg-card p-6 shadow-sm">
+      <div className="animate-rise rise-1 rounded-xl border bg-card p-6 shadow-sm print:break-inside-avoid print:border-0 print:p-0 print:shadow-none">
         <h3 className="mb-1 font-display text-lg font-semibold">Your Essay</h3>
         <p className="mb-4 text-xs text-muted-foreground">
           Highlights show your approved structure. Unhighlighted text is detail you added during
@@ -148,7 +176,7 @@ export function FinalReport({ draft, sections, feedback }: Props) {
       </div>
 
       {feedback.topImprovements && feedback.topImprovements.length > 0 && (
-        <div className="animate-rise rise-2 rounded-xl border bg-card p-6 shadow-sm">
+        <div className="animate-rise rise-2 rounded-xl border bg-card p-6 shadow-sm print:break-inside-avoid print:border-0 print:p-0 print:shadow-none">
           <h3 className="mb-3 font-display text-lg font-semibold">Top Improvements</h3>
           <ol className="flex flex-col gap-2">
             {feedback.topImprovements.map((tip, i) => (

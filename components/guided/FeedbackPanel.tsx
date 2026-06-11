@@ -51,7 +51,7 @@ export function FeedbackPanel({ feedback }: Props) {
   const { label, className } = ratingConfig[feedback.rating];
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm">
+    <div className="rounded-xl border bg-card p-6 shadow-sm print:break-inside-avoid print:border-0 print:p-0 print:shadow-none">
       <div className="mb-4 flex items-center gap-3">
         <h3 className="font-display text-lg font-semibold">Feedback</h3>
         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${className}`}>

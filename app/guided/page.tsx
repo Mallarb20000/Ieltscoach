@@ -405,7 +405,7 @@ export default function GuidedPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden">
+    <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden print:block print:h-auto print:overflow-visible">
       <TopicHeader
         topic={topic}
         canEdit={!anyStageApproved}
@@ -415,14 +415,14 @@ export default function GuidedPage() {
         }}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6">
+      <div className="flex flex-1 overflow-hidden print:block print:overflow-visible">
+        <main className="flex-1 overflow-y-auto p-6 print:overflow-visible print:p-0">
           <div
             key={showBodyChoice ? 'body-choice' : currentStageId}
             className="animate-rise mx-auto flex max-w-2xl flex-col gap-5"
           >
             {feedbackError && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm">
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm print:hidden">
                 <p className="text-red-900">{feedbackError}</p>
                 <Button
                   size="sm"
@@ -439,6 +439,7 @@ export default function GuidedPage() {
               <BodyChoicePanel onAddThird={addThirdBody} onSkip={skipToConclusion} />
             ) : currentStageId === 'synthesis' ? (
               <SynthesisPanel
+                topic={topic}
                 feedback={currentStage.feedback}
                 sections={stageOrder
                   .filter((id) => id !== 'synthesis')
@@ -511,7 +512,7 @@ export default function GuidedPage() {
           </div>
         </main>
 
-        <aside className="w-56 shrink-0 overflow-y-auto border-l">
+        <aside className="w-56 shrink-0 overflow-y-auto border-l print:hidden">
           <StageTracker
             stages={trackerStages}
             currentStageId={currentStageId}
@@ -567,6 +568,7 @@ function BodyChoicePanel({
 const MAX_TURNS = 3;
 
 interface SynthesisPanelProps {
+  topic: string;
   feedback: StageFeedback | null;
   sections: ReportSection[];
   draft: string;
@@ -578,6 +580,7 @@ interface SynthesisPanelProps {
 }
 
 function SynthesisPanel({
+  topic,
   feedback,
   sections,
   draft,
@@ -592,7 +595,7 @@ function SynthesisPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="rounded-xl border bg-card p-6 shadow-sm print:hidden">
         <div className="mb-3">
           <span className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
             Final stage
@@ -637,7 +640,9 @@ function SynthesisPanel({
         </div>
       </div>
 
-      {feedback && <FinalReport draft={draft} sections={sections} feedback={feedback} />}
+      {feedback && (
+        <FinalReport topic={topic} draft={draft} sections={sections} feedback={feedback} />
+      )}
     </div>
   );
 }

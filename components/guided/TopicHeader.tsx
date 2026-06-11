@@ -11,7 +11,7 @@ interface Props {
 
 export function TopicHeader({ topic, canEdit, onEdit }: Props) {
   return (
-    <div className="border-b bg-card/60 px-6 py-3">
+    <div className="border-b bg-card/60 px-6 py-3 print:hidden">
       <div className="mx-auto flex max-w-5xl items-start justify-between gap-4">
         <div className="flex-1">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">

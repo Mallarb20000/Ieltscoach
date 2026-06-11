@@ -12,7 +12,7 @@ export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 h-14 border-b border-border/70 bg-background/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 h-14 border-b border-border/70 bg-background/85 backdrop-blur-md print:hidden">
       <div className="mx-auto flex h-full max-w-5xl items-center justify-between px-5">
         <Link href="/" className="group flex items-baseline gap-1.5">
           <span className="font-display text-lg font-semibold tracking-tight">

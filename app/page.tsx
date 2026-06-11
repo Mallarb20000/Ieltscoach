@@ -80,7 +80,7 @@ function MarkedEssayPreview() {
 
 export default function Home() {
   return (
-    <div className="bg-ruled relative flex flex-1 flex-col overflow-hidden">
+    <div className="relative flex flex-1 flex-col overflow-hidden">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-y-0 left-8 hidden w-px bg-destructive/20 sm:block"

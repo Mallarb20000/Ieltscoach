@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <div className="bg-ruled flex flex-1 items-center justify-center p-6">
+    <div className="flex flex-1 items-center justify-center p-6">
       <div className="animate-rise w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
           Free account

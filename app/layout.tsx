@@ -42,7 +42,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <SiteNav />
-        <div className="flex flex-1 flex-col">{children}</div>
+        <div className="bg-ruled flex flex-1 flex-col print:bg-none">{children}</div>
       </body>
     </html>
   );

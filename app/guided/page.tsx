@@ -411,7 +411,7 @@ export default function GuidedPage() {
 
   if (!topicSet) {
     return (
-      <div className="bg-ruled flex flex-1 items-center justify-center p-6">
+      <div className="flex flex-1 items-center justify-center p-6">
         <div className="animate-rise w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             Guided session
@@ -455,7 +455,7 @@ export default function GuidedPage() {
 
   if (editingTopic) {
     return (
-      <div className="bg-ruled flex flex-1 items-center justify-center p-6">
+      <div className="flex flex-1 items-center justify-center p-6">
         <div className="animate-rise w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm">
           <h1 className="mb-1 font-display text-2xl font-semibold">Edit prompt</h1>
           <Textarea

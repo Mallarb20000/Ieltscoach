@@ -161,6 +161,10 @@
   .animate-rise {
     animation: none;
   }
+  .animate-draw {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
   /* Keep section highlights and band card colors in the exported PDF */
   [data-final-report],
   [data-final-report] * {
@@ -193,6 +197,48 @@
   .rise-4 { animation-delay: 300ms; }
   .rise-5 { animation-delay: 380ms; }
 
+  /* Self-drawing stroke; requires pathLength={1} on the SVG path */
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .animate-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.6s forwards;
+  }
+
+  /* Hero odometer: digit drops to 4, rolls up through 9, settles back on 7 */
+  @keyframes band-roll {
+    0% {
+      transform: translateY(0);
+    }
+    55% {
+      transform: translateY(-83.3333%);
+    }
+    70% {
+      transform: translateY(-83.3333%);
+    }
+    100% {
+      transform: translateY(-50%);
+    }
+  }
+  .animate-band-roll {
+    animation: band-roll 1.6s cubic-bezier(0.45, 0, 0.25, 1) both;
+  }
+
+  /* Scroll-driven reveal: pure CSS where supported, static everywhere else */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .scroll-rise {
+        animation: rise ease-out both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 55%;
+      }
+    }
+  }
+
   /* Ruled notebook paper, used as a quiet hero backdrop */
   .bg-ruled {
     background-image: repeating-linear-gradient(
@@ -206,6 +252,13 @@
 
   @media (prefers-reduced-motion: reduce) {
     .animate-rise {
+      animation: none;
+    }
+    .animate-draw {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+    .animate-band-roll {
       animation: none;
     }
   }

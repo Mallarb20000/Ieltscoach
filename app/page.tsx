@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { BandMeter } from '@/components/landing/BandMeter';
+import { RollingBand } from '@/components/landing/RollingBand';
 
 const FACTS = [
   { value: '11', label: 'guided stages' },
@@ -17,10 +19,71 @@ function PenUnderline() {
     >
       <path
         d="M4 10 C 50 3 95 12 140 6 S 200 5 216 8"
+        pathLength={1}
+        className="animate-draw"
         fill="none"
         stroke="currentColor"
         strokeWidth="3.5"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// Hand-drawn Himalayan ridge with a pennant on the summit
+function RidgeDivider() {
+  return (
+    <div aria-hidden className="overflow-hidden text-primary/25">
+      <svg
+        viewBox="0 0 1200 80"
+        preserveAspectRatio="none"
+        fill="none"
+        className="h-12 w-full sm:h-16"
+      >
+        <path
+          d="M0 70 L120 52 L210 64 L330 32 L420 58 L540 22 L600 46 L700 14 L760 42 L880 28 L980 56 L1080 44 L1200 62"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <g className="text-destructive/60">
+          <line
+            x1="700"
+            y1="14"
+            x2="700"
+            y2="2"
+            stroke="currentColor"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+          />
+          <path d="M700 2 L712 6 L700 10 Z" fill="currentColor" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function PaperPlane() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 140 90"
+      fill="none"
+      className="pointer-events-none absolute right-48 top-1/2 hidden w-28 -translate-y-1/2 text-primary/40 lg:block"
+    >
+      <path
+        d="M6 80 C 36 74 58 48 96 28"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeDasharray="3 6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M100 26 L132 8 L116 36 L109 29 Z M109 29 L112 40"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
       />
     </svg>
   );
@@ -95,10 +158,9 @@ export default function Home() {
 
             <h1 className="animate-rise rise-1 mt-4 font-display text-5xl font-medium leading-[1.05] tracking-tight sm:text-6xl">
               Write your way to{' '}
-              <span className="relative inline-block italic text-primary">
-                Band 7.
+              <RollingBand>
                 <PenUnderline />
-              </span>
+              </RollingBand>
             </h1>
 
             <p className="animate-rise rise-2 mt-7 max-w-xl text-base leading-7 text-muted-foreground">
@@ -150,7 +212,38 @@ export default function Home() {
         </p>
       </main>
 
+      <RidgeDivider />
+
       <section className="border-t bg-card/60">
+        <div className="mx-auto grid w-full max-w-5xl items-center gap-12 px-6 py-16 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="scroll-rise">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+              The target
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-medium tracking-tight">
+              Seven is a habit, not a miracle.
+            </h2>
+            <p className="mt-4 max-w-md text-sm leading-7 text-muted-foreground">
+              Most university offers and visa routes ask for a 7. The coach scores every stage
+              against the four official criteria while you write, so the estimate moves with
+              your sentences — not after results day.
+            </p>
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {CRITERIA.map((criterion) => (
+                <li
+                  key={criterion}
+                  className="rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground"
+                >
+                  {criterion}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <BandMeter />
+        </div>
+      </section>
+
+      <section className="border-t">
         <div className="mx-auto w-full max-w-5xl px-6 py-16">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             How it works
@@ -160,7 +253,7 @@ export default function Home() {
           </h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             {STEPS.map((step, i) => (
-              <div key={step.title} className="rounded-xl border bg-card p-6 shadow-sm">
+              <div key={step.title} className="scroll-rise rounded-xl border bg-card p-6 shadow-sm">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-display text-sm font-semibold text-primary-foreground">
                   {i + 1}
                 </span>
@@ -169,7 +262,8 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <div className="mt-10 flex flex-col items-start gap-3 rounded-xl border border-primary/25 bg-accent/50 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="scroll-rise relative mt-10 flex flex-col items-start gap-3 overflow-hidden rounded-xl border border-primary/25 bg-accent/50 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <PaperPlane />
             <div>
               <h3 className="font-display text-lg font-semibold text-accent-foreground">
                 Keep every report. Watch your band climb.
@@ -217,6 +311,13 @@ export default function Home() {
     </div>
   );
 }
+
+const CRITERIA = [
+  'Task Response',
+  'Coherence & Cohesion',
+  'Lexical Resource',
+  'Grammatical Range',
+];
 
 const STEPS = [
   {

@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import type { StageFeedback } from '@/lib/llm/adapter';
 
-const MAX_TURNS = 8;
+const MAX_TURNS = 3;
 
 interface Props {
   stageLabel: string;

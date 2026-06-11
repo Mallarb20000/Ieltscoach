@@ -90,7 +90,7 @@ const STAGE_HINTS: Record<StageId, string> = {
   conclusion:
     'Restate your position and summarise your main points in different words. Do NOT introduce new ideas or examples. Aim for 40–60 words.',
   synthesis:
-    'All stages complete. Your assembled essay will be reviewed holistically for band score estimates across all four IELTS criteria (TR, CC, LR, GRA).',
+    'Your approved structure is assembled below and is now editable. Add supporting details, examples, and linking sentences in between your approved sentences, then get your final review with band score estimates (TR, CC, LR, GRA).',
 };
 
 // Soft targets only — guided stages never block on word count
@@ -192,8 +192,7 @@ export default function GuidedPage() {
   const currentStage = stages[currentStageId];
 
   async function handleGetFeedback() {
-    const text =
-      currentStageId === 'synthesis' ? assembleEssay(stages) : currentStage.userText;
+    const text = currentStage.userText;
     if (!text.trim()) return;
 
     setLoading(true);
@@ -256,13 +255,14 @@ export default function GuidedPage() {
     setStages((prev) => {
       const updated = { ...prev, [fromId]: { ...prev[fromId], state: newState } };
       if (nextId) {
+        // Seed the synthesis draft from the approved structure only once —
+        // never clobber details the user has already typed into it
+        const seedSynthesis =
+          nextId === 'synthesis' && prev.synthesis.userText.trim() === '';
         updated[nextId] = {
           ...prev[nextId],
           state: 'in_progress',
-          userText:
-            nextId === 'synthesis'
-              ? assembleEssay({ ...prev, [fromId]: { ...prev[fromId], state: newState } })
-              : prev[nextId].userText,
+          userText: seedSynthesis ? assembleEssay(updated) : prev[nextId].userText,
         };
       }
       return updated;
@@ -414,7 +414,19 @@ export default function GuidedPage() {
             ) : currentStageId === 'synthesis' ? (
               <SynthesisPanel
                 feedback={currentStage.feedback}
-                assembledEssay={assembleEssay(stages)}
+                draft={currentStage.userText}
+                onDraftChange={(v) =>
+                  setStages((prev) => ({
+                    ...prev,
+                    synthesis: { ...prev.synthesis, userText: v, feedback: null },
+                  }))
+                }
+                onReloadStructure={() =>
+                  setStages((prev) => ({
+                    ...prev,
+                    synthesis: { ...prev.synthesis, userText: assembleEssay(prev), feedback: null },
+                  }))
+                }
                 loading={loading}
                 turns={currentStage.turns}
                 onGetSynthesis={handleGetFeedback}
@@ -483,7 +495,10 @@ export default function GuidedPage() {
                 synthesis: {
                   ...prev.synthesis,
                   state: 'in_progress',
-                  userText: assembleEssay(prev),
+                  userText:
+                    prev.synthesis.userText.trim() === ''
+                      ? assembleEssay(prev)
+                      : prev.synthesis.userText,
                 },
               }));
             }}
@@ -520,11 +535,13 @@ function BodyChoicePanel({
   );
 }
 
-const MAX_TURNS = 8;
+const MAX_TURNS = 3;
 
 interface SynthesisPanelProps {
   feedback: StageFeedback | null;
-  assembledEssay: string;
+  draft: string;
+  onDraftChange: (v: string) => void;
+  onReloadStructure: () => void;
   loading: boolean;
   turns: number;
   onGetSynthesis: () => void;
@@ -532,14 +549,15 @@ interface SynthesisPanelProps {
 
 function SynthesisPanel({
   feedback,
-  assembledEssay,
+  draft,
+  onDraftChange,
+  onReloadStructure,
   loading,
   turns,
   onGetSynthesis,
 }: SynthesisPanelProps) {
   const turnsExhausted = turns >= MAX_TURNS;
-  const essayWordCount =
-    assembledEssay.trim() === '' ? 0 : assembledEssay.trim().split(/\s+/).length;
+  const essayWordCount = draft.trim() === '' ? 0 : draft.trim().split(/\s+/).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -551,9 +569,11 @@ function SynthesisPanel({
         <p className="mb-3 text-sm text-muted-foreground">{STAGE_HINTS.synthesis}</p>
 
         <Textarea
-          value={assembledEssay}
-          readOnly
-          className="min-h-[220px] resize-none bg-muted text-sm"
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          placeholder="Your approved structure will appear here..."
+          className="min-h-[280px] text-sm"
+          disabled={loading}
         />
 
         <p
@@ -570,13 +590,16 @@ function SynthesisPanel({
           </p>
         )}
 
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           <Button
             onClick={onGetSynthesis}
-            disabled={loading || turnsExhausted || !assembledEssay.trim()}
+            disabled={loading || turnsExhausted || !draft.trim()}
             size="sm"
           >
             {loading ? 'Analysing...' : `Get Synthesis (${turns}/${MAX_TURNS})`}
+          </Button>
+          <Button onClick={onReloadStructure} variant="outline" size="sm" disabled={loading}>
+            Reset to approved structure
           </Button>
         </div>
       </div>
@@ -619,7 +642,7 @@ function SynthesisPanel({
         </div>
       )}
 
-      {feedback && <FeedbackPanel feedback={feedback} userText={assembledEssay} />}
+      {feedback && <FeedbackPanel feedback={feedback} userText={draft} />}
     </div>
   );
 }

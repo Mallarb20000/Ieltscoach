@@ -20,6 +20,7 @@ interface Props {
   feedback: StageFeedback | null | undefined;
   loading: boolean;
   turns: number;
+  targetWordCount?: { min: number; max: number };
 }
 
 function wordCount(text: string): number {
@@ -39,10 +40,15 @@ export function StageEditor({
   feedback,
   loading,
   turns,
+  targetWordCount,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const count = wordCount(value);
   const turnsExhausted = turns >= MAX_TURNS;
+  const outsideTarget =
+    targetWordCount != null &&
+    count > 0 &&
+    (count < targetWordCount.min || count > targetWordCount.max);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -64,7 +70,12 @@ export function StageEditor({
           </span>
           <h2 className="text-base font-semibold">{stageLabel}</h2>
         </div>
-        <span className="text-xs text-muted-foreground">{count} words</span>
+        <span
+          className={`text-xs ${outsideTarget ? 'font-medium text-amber-600' : 'text-muted-foreground'}`}
+        >
+          {count} words
+          {targetWordCount && ` (target ${targetWordCount.min}–${targetWordCount.max})`}
+        </span>
       </div>
 
       <p className="mb-3 text-sm text-muted-foreground">{hint}</p>

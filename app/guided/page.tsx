@@ -93,6 +93,20 @@ const STAGE_HINTS: Record<StageId, string> = {
     'All stages complete. Your assembled essay will be reviewed holistically for band score estimates across all four IELTS criteria (TR, CC, LR, GRA).',
 };
 
+// Soft targets only — guided stages never block on word count
+const STAGE_TARGETS: Partial<Record<StageId, { min: number; max: number }>> = {
+  hook: { min: 15, max: 35 },
+  bridge: { min: 10, max: 30 },
+  thesis: { min: 25, max: 40 },
+  'topic-sentence-1': { min: 15, max: 25 },
+  'body-paragraph-1': { min: 80, max: 120 },
+  'topic-sentence-2': { min: 15, max: 25 },
+  'body-paragraph-2': { min: 80, max: 120 },
+  'topic-sentence-3': { min: 15, max: 25 },
+  'body-paragraph-3': { min: 80, max: 120 },
+  conclusion: { min: 40, max: 60 },
+};
+
 function initialStages(): SessionStages {
   const stages = {} as SessionStages;
   for (const id of ALL_STAGE_IDS) {
@@ -172,6 +186,7 @@ export default function GuidedPage() {
   const [showBodyChoice, setShowBodyChoice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [warnConfirm, setWarnConfirm] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const stageOrder = hasThirdBody ? EXTENDED_STAGE_ORDER : BASE_STAGE_ORDER;
   const currentStage = stages[currentStageId];
@@ -182,10 +197,13 @@ export default function GuidedPage() {
     if (!text.trim()) return;
 
     setLoading(true);
+    setFeedbackError(null);
     try {
       const res = await fetch('/api/guided/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Flaky connections are common for our users — fail to a retry banner, never hang
+        signal: AbortSignal.timeout(90_000),
         body: JSON.stringify({
           stage: currentStageId,
           prompt: topic,
@@ -211,7 +229,9 @@ export default function GuidedPage() {
       }));
     } catch (err) {
       console.error('Feedback error:', err);
-      alert('Failed to get feedback. Please try again.');
+      setFeedbackError(
+        'Could not get feedback. Check your internet connection and try again — your writing is safe.'
+      );
     } finally {
       setLoading(false);
     }
@@ -268,6 +288,7 @@ export default function GuidedPage() {
     setCurrentStageId(id);
     setWarnConfirm(false);
     setShowBodyChoice(false);
+    setFeedbackError(null);
   }
 
   function addThirdBody() {
@@ -374,6 +395,20 @@ export default function GuidedPage() {
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mx-auto flex max-w-2xl flex-col gap-5">
+            {feedbackError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm">
+                <p className="text-red-900">{feedbackError}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={handleGetFeedback}
+                  disabled={loading}
+                >
+                  {loading ? 'Retrying...' : 'Retry'}
+                </Button>
+              </div>
+            )}
             {showBodyChoice ? (
               <BodyChoicePanel onAddThird={addThirdBody} onSkip={skipToConclusion} />
             ) : currentStageId === 'synthesis' ? (
@@ -404,6 +439,7 @@ export default function GuidedPage() {
                   feedback={currentStage.feedback}
                   loading={loading}
                   turns={currentStage.turns}
+                  targetWordCount={STAGE_TARGETS[currentStageId]}
                 />
 
                 {warnConfirm && (
@@ -502,6 +538,8 @@ function SynthesisPanel({
   onGetSynthesis,
 }: SynthesisPanelProps) {
   const turnsExhausted = turns >= MAX_TURNS;
+  const essayWordCount =
+    assembledEssay.trim() === '' ? 0 : assembledEssay.trim().split(/\s+/).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -517,6 +555,14 @@ function SynthesisPanel({
           readOnly
           className="min-h-[220px] resize-none bg-muted text-sm"
         />
+
+        <p
+          className={`mt-2 text-xs ${essayWordCount < 250 ? 'font-medium text-amber-600' : 'text-muted-foreground'}`}
+        >
+          {essayWordCount} words
+          {essayWordCount < 250 &&
+            ' — IELTS Task 2 requires at least 250 words; shorter essays lose Task Response marks'}
+        </p>
 
         {turnsExhausted && (
           <p className="mt-2 text-xs text-destructive">

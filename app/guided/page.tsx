@@ -5,6 +5,7 @@ import { randomTopic } from '@/lib/topics';
 import { TopicHeader } from '@/components/guided/TopicHeader';
 import { StageEditor } from '@/components/guided/StageEditor';
 import { FeedbackPanel } from '@/components/guided/FeedbackPanel';
+import { FinalReport, type ReportSection } from '@/components/guided/FinalReport';
 import { StageTracker } from '@/components/guided/StageTracker';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -431,6 +432,9 @@ export default function GuidedPage() {
             ) : currentStageId === 'synthesis' ? (
               <SynthesisPanel
                 feedback={currentStage.feedback}
+                sections={stageOrder
+                  .filter((id) => id !== 'synthesis')
+                  .map((id) => ({ id, label: STAGE_LABELS[id], text: stages[id].userText }))}
                 draft={currentStage.userText}
                 onDraftChange={(v) =>
                   setStages((prev) => ({
@@ -556,6 +560,7 @@ const MAX_TURNS = 3;
 
 interface SynthesisPanelProps {
   feedback: StageFeedback | null;
+  sections: ReportSection[];
   draft: string;
   onDraftChange: (v: string) => void;
   onReloadStructure: () => void;
@@ -566,6 +571,7 @@ interface SynthesisPanelProps {
 
 function SynthesisPanel({
   feedback,
+  sections,
   draft,
   onDraftChange,
   onReloadStructure,
@@ -621,45 +627,7 @@ function SynthesisPanel({
         </div>
       </div>
 
-      {feedback?.bands && (
-        <div className="rounded-lg border bg-card p-5">
-          <h3 className="mb-4 text-sm font-semibold">Band Score Estimates</h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(['TR', 'CC', 'LR', 'GRA'] as const).map((criterion) => (
-              <div key={criterion} className="rounded-md border p-3 text-center">
-                <p className="text-xs font-medium text-muted-foreground">{criterion}</p>
-                <p className="mt-1 text-2xl font-bold">{feedback.bands![criterion].toFixed(1)}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-md bg-accent p-3 text-center">
-            <p className="text-xs font-medium text-muted-foreground">Overall Estimate</p>
-            <p className="mt-1 text-3xl font-bold">{feedback.bands.overall.toFixed(1)}</p>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            These are AI estimates only — not official IELTS scores. Verify with a qualified
-            examiner.
-          </p>
-        </div>
-      )}
-
-      {feedback?.topImprovements && feedback.topImprovements.length > 0 && (
-        <div className="rounded-lg border bg-card p-5">
-          <h3 className="mb-3 text-sm font-semibold">Top Improvements</h3>
-          <ol className="flex flex-col gap-2">
-            {feedback.topImprovements.map((tip, i) => (
-              <li key={i} className="flex gap-2 text-sm">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                  {i + 1}
-                </span>
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {feedback && <FeedbackPanel feedback={feedback} userText={draft} />}
+      {feedback && <FinalReport draft={draft} sections={sections} feedback={feedback} />}
     </div>
   );
 }

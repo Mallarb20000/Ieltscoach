@@ -27,6 +27,10 @@ create index reports_user_created_idx on public.reports (user_id, created_at des
 alter table public.profiles enable row level security;
 alter table public.reports enable row level security;
 
+-- RLS policies filter rows, but the roles still need table privileges
+grant select, update on public.profiles to authenticated;
+grant select, insert, update, delete on public.reports to authenticated;
+
 create policy "Users can view own profile"
   on public.profiles for select using (auth.uid() = id);
 create policy "Users can update own profile"

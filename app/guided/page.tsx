@@ -1,0 +1,579 @@
+'use client';
+
+import { useState } from 'react';
+import { TopicHeader } from '@/components/guided/TopicHeader';
+import { StageEditor } from '@/components/guided/StageEditor';
+import { FeedbackPanel } from '@/components/guided/FeedbackPanel';
+import { StageTracker } from '@/components/guided/StageTracker';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import type { StageFeedback, StageId } from '@/lib/llm/adapter';
+import type { StageState, StageData } from '@/types/stages';
+
+type SessionStages = Record<StageId, StageData>;
+
+// Ordered list of stages that are always present
+const BASE_STAGE_ORDER: StageId[] = [
+  'hook',
+  'bridge',
+  'thesis',
+  'topic-sentence-1',
+  'body-paragraph-1',
+  'topic-sentence-2',
+  'body-paragraph-2',
+  'conclusion',
+  'synthesis',
+];
+
+// Extended order when the student opts in to a 3rd body paragraph
+const EXTENDED_STAGE_ORDER: StageId[] = [
+  'hook',
+  'bridge',
+  'thesis',
+  'topic-sentence-1',
+  'body-paragraph-1',
+  'topic-sentence-2',
+  'body-paragraph-2',
+  'topic-sentence-3',
+  'body-paragraph-3',
+  'conclusion',
+  'synthesis',
+];
+
+// All stage IDs that can ever exist (used for initialisation)
+const ALL_STAGE_IDS: StageId[] = [
+  'hook',
+  'bridge',
+  'thesis',
+  'topic-sentence-1',
+  'body-paragraph-1',
+  'topic-sentence-2',
+  'body-paragraph-2',
+  'topic-sentence-3',
+  'body-paragraph-3',
+  'conclusion',
+  'synthesis',
+];
+
+const STAGE_LABELS: Record<StageId, string> = {
+  hook: 'Hook Sentence',
+  bridge: 'Bridge',
+  thesis: 'Thesis Statement',
+  'topic-sentence-1': 'Topic Sentence (Body 1)',
+  'body-paragraph-1': 'Body Paragraph 1',
+  'topic-sentence-2': 'Topic Sentence (Body 2)',
+  'body-paragraph-2': 'Body Paragraph 2',
+  'topic-sentence-3': 'Topic Sentence (Body 3)',
+  'body-paragraph-3': 'Body Paragraph 3',
+  conclusion: 'Conclusion',
+  synthesis: 'Final Synthesis',
+};
+
+const STAGE_HINTS: Record<StageId, string> = {
+  hook: "Write 1–2 sentences that open your essay. Aim for 15–35 words. Use a specific statistic, counterintuitive claim, or concrete scenario — avoid openers like \"Nowadays...\" or \"In today's world...\"",
+  bridge:
+    'Write 1–2 sentences connecting your hook to your thesis. Aim for 10–30 words. Smooth the logical flow — no abrupt jump between your opening idea and your position.',
+  thesis:
+    'Write 1 sentence that states your clear position and previews your two main arguments. Aim for 25–40 words. Example: "I believe X is beneficial because of Y and Z."',
+  'topic-sentence-1':
+    'Write the opening sentence of Body Paragraph 1. It should introduce your FIRST main argument and link back to the thesis. Aim for 15–25 words.',
+  'body-paragraph-1':
+    'Develop your first argument: (1) clear claim, (2) specific example or evidence, (3) a sentence linking back to the thesis. Aim for 80–120 words.',
+  'topic-sentence-2':
+    'Write the opening sentence of Body Paragraph 2. It should introduce your SECOND main argument (different from Body 1) and connect to the thesis. Aim for 15–25 words.',
+  'body-paragraph-2':
+    'Develop your second argument: (1) clear claim, (2) specific example or evidence, (3) a sentence linking back to the thesis. Aim for 80–120 words.',
+  'topic-sentence-3':
+    'Write the opening sentence of Body Paragraph 3. Introduce a supporting or contrasting point not covered in Body 1 or 2. Aim for 15–25 words.',
+  'body-paragraph-3':
+    'Develop your third argument: (1) clear claim, (2) specific example or evidence, (3) a sentence linking back to the thesis. Aim for 80–120 words.',
+  conclusion:
+    'Restate your position and summarise your main points in different words. Do NOT introduce new ideas or examples. Aim for 40–60 words.',
+  synthesis:
+    'All stages complete. Your assembled essay will be reviewed holistically for band score estimates across all four IELTS criteria (TR, CC, LR, GRA).',
+};
+
+function initialStages(): SessionStages {
+  const stages = {} as SessionStages;
+  for (const id of ALL_STAGE_IDS) {
+    stages[id] = {
+      state: id === 'hook' ? 'in_progress' : 'locked',
+      userText: '',
+      feedback: null,
+      turns: 0,
+    };
+  }
+  return stages;
+}
+
+function isDone(s: StageData): boolean {
+  return s.state === 'approved' || s.state === 'warned_pass';
+}
+
+function buildPriorContext(stages: SessionStages, currentStage: StageId) {
+  const ctx: {
+    hook?: string;
+    bridge?: string;
+    thesis?: string;
+    topicSentences?: string[];
+    bodyParagraphs?: string[];
+    conclusion?: string;
+  } = {};
+
+  for (const id of ALL_STAGE_IDS) {
+    if (id === currentStage) break;
+    const s = stages[id];
+    if (!s || !isDone(s) || !s.userText.trim()) continue;
+
+    if (id === 'hook') ctx.hook = s.userText;
+    else if (id === 'bridge') ctx.bridge = s.userText;
+    else if (id === 'thesis') ctx.thesis = s.userText;
+    else if (id.startsWith('topic-sentence'))
+      ctx.topicSentences = [...(ctx.topicSentences ?? []), s.userText];
+    else if (id.startsWith('body-paragraph'))
+      ctx.bodyParagraphs = [...(ctx.bodyParagraphs ?? []), s.userText];
+    else if (id === 'conclusion') ctx.conclusion = s.userText;
+  }
+  return ctx;
+}
+
+// Intro = hook + bridge + thesis joined as ONE paragraph
+function assembleEssay(stages: SessionStages): string {
+  const parts: string[] = [];
+
+  const introParts = (['hook', 'bridge', 'thesis'] as StageId[])
+    .map((id) => stages[id]?.userText.trim())
+    .filter(Boolean);
+  if (introParts.length > 0) parts.push(introParts.join(' '));
+
+  for (const n of [1, 2, 3] as const) {
+    const tsId = `topic-sentence-${n}` as StageId;
+    const bpId = `body-paragraph-${n}` as StageId;
+    const ts = stages[tsId]?.userText.trim();
+    const bp = stages[bpId]?.userText.trim();
+    if (ts || bp) parts.push([ts, bp].filter(Boolean).join(' '));
+  }
+
+  const conc = stages.conclusion?.userText.trim();
+  if (conc) parts.push(conc);
+
+  return parts.join('\n\n');
+}
+
+export default function GuidedPage() {
+  const [topic, setTopic] = useState('');
+  const [topicDraft, setTopicDraft] = useState('');
+  const [topicSet, setTopicSet] = useState(false);
+  const [editingTopic, setEditingTopic] = useState(false);
+
+  const [stages, setStages] = useState<SessionStages>(initialStages);
+  const [currentStageId, setCurrentStageId] = useState<StageId>('hook');
+  const [hasThirdBody, setHasThirdBody] = useState(false);
+  const [showBodyChoice, setShowBodyChoice] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [warnConfirm, setWarnConfirm] = useState(false);
+
+  const stageOrder = hasThirdBody ? EXTENDED_STAGE_ORDER : BASE_STAGE_ORDER;
+  const currentStage = stages[currentStageId];
+
+  async function handleGetFeedback() {
+    const text =
+      currentStageId === 'synthesis' ? assembleEssay(stages) : currentStage.userText;
+    if (!text.trim()) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/guided/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stage: currentStageId,
+          prompt: topic,
+          userText: text,
+          priorContext:
+            currentStageId === 'synthesis' ? {} : buildPriorContext(stages, currentStageId),
+        }),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json()) as { error: string };
+        throw new Error(body.error ?? 'Unknown error');
+      }
+
+      const { data } = (await res.json()) as { data: { feedback: StageFeedback } };
+      setStages((prev) => ({
+        ...prev,
+        [currentStageId]: {
+          ...prev[currentStageId],
+          feedback: data.feedback,
+          turns: prev[currentStageId].turns + 1,
+        },
+      }));
+    } catch (err) {
+      console.error('Feedback error:', err);
+      alert('Failed to get feedback. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function advanceToNext(fromId: StageId, newState: 'approved' | 'warned_pass') {
+    // After body-paragraph-2, pause to ask about optional 3rd body
+    if (fromId === 'body-paragraph-2' && !hasThirdBody) {
+      setStages((prev) => ({
+        ...prev,
+        [fromId]: { ...prev[fromId], state: newState },
+      }));
+      setShowBodyChoice(true);
+      return;
+    }
+
+    // Skip stages already approved/warned so revising an earlier stage
+    // doesn't demote downstream work back to in_progress
+    const idx = stageOrder.indexOf(fromId);
+    const nextId = stageOrder.slice(idx + 1).find((id) => !isDone(stages[id])) ?? null;
+
+    setStages((prev) => {
+      const updated = { ...prev, [fromId]: { ...prev[fromId], state: newState } };
+      if (nextId) {
+        updated[nextId] = {
+          ...prev[nextId],
+          state: 'in_progress',
+          userText:
+            nextId === 'synthesis'
+              ? assembleEssay({ ...prev, [fromId]: { ...prev[fromId], state: newState } })
+              : prev[nextId].userText,
+        };
+      }
+      return updated;
+    });
+    if (nextId) setCurrentStageId(nextId);
+  }
+
+  function handleApprove() {
+    advanceToNext(currentStageId, 'approved');
+  }
+
+  function handleContinueAnyway() {
+    setWarnConfirm(true);
+  }
+
+  function confirmContinueAnyway() {
+    setWarnConfirm(false);
+    advanceToNext(currentStageId, 'warned_pass');
+  }
+
+  function handleStageClick(id: StageId) {
+    setStages((prev) => ({ ...prev, [id]: { ...prev[id], state: 'in_progress' } }));
+    setCurrentStageId(id);
+    setWarnConfirm(false);
+    setShowBodyChoice(false);
+  }
+
+  function addThirdBody() {
+    setHasThirdBody(true);
+    setShowBodyChoice(false);
+    setStages((prev) => ({
+      ...prev,
+      'topic-sentence-3': { ...prev['topic-sentence-3'], state: 'in_progress' },
+    }));
+    setCurrentStageId('topic-sentence-3');
+  }
+
+  function skipToConclusion() {
+    setShowBodyChoice(false);
+    setStages((prev) => ({
+      ...prev,
+      conclusion: { ...prev.conclusion, state: 'in_progress' },
+    }));
+    setCurrentStageId('conclusion');
+  }
+
+  const canSynthesize = stageOrder
+    .filter((id) => id !== 'synthesis')
+    .every((id) => isDone(stages[id]));
+
+  const anyStageApproved = ALL_STAGE_IDS.some((id) => isDone(stages[id]));
+
+  const trackerStages = stageOrder.map((id) => ({
+    id,
+    label: STAGE_LABELS[id],
+    state: stages[id].state,
+  }));
+
+  const stageNumber = stageOrder.indexOf(currentStageId) + 1;
+
+  if (!topicSet) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="w-full max-w-xl rounded-lg border bg-card p-8 shadow-sm">
+          <h1 className="mb-1 text-xl font-semibold">Start a new session</h1>
+          <p className="mb-5 text-sm text-muted-foreground">
+            Paste the IELTS Writing Task 2 question you are working on.
+          </p>
+          <Textarea
+            value={topicDraft}
+            onChange={(e) => setTopicDraft(e.target.value)}
+            placeholder="e.g. Some people believe that universities should focus on providing academic knowledge, while others argue they should prepare students for the working world. Discuss both views and give your own opinion."
+            className="min-h-[100px] text-sm"
+          />
+          <Button
+            className="mt-4 w-full"
+            disabled={topicDraft.trim().length < 10}
+            onClick={() => {
+              setTopic(topicDraft.trim());
+              setTopicSet(true);
+            }}
+          >
+            Start writing
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (editingTopic) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="w-full max-w-xl rounded-lg border bg-card p-8 shadow-sm">
+          <h1 className="mb-1 text-xl font-semibold">Edit prompt</h1>
+          <Textarea
+            value={topicDraft || topic}
+            onChange={(e) => setTopicDraft(e.target.value)}
+            className="min-h-[100px] text-sm"
+          />
+          <div className="mt-4 flex gap-2">
+            <Button
+              onClick={() => {
+                setTopic((topicDraft || topic).trim());
+                setEditingTopic(false);
+              }}
+            >
+              Save
+            </Button>
+            <Button variant="outline" onClick={() => setEditingTopic(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen flex-col overflow-hidden">
+      <TopicHeader
+        topic={topic}
+        canEdit={!anyStageApproved}
+        onEdit={() => {
+          setTopicDraft(topic);
+          setEditingTopic(true);
+        }}
+      />
+
+      <div className="flex flex-1 overflow-hidden">
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="mx-auto flex max-w-2xl flex-col gap-5">
+            {showBodyChoice ? (
+              <BodyChoicePanel onAddThird={addThirdBody} onSkip={skipToConclusion} />
+            ) : currentStageId === 'synthesis' ? (
+              <SynthesisPanel
+                feedback={currentStage.feedback}
+                assembledEssay={assembleEssay(stages)}
+                loading={loading}
+                turns={currentStage.turns}
+                onGetSynthesis={handleGetFeedback}
+              />
+            ) : (
+              <>
+                <StageEditor
+                  stageLabel={STAGE_LABELS[currentStageId]}
+                  stageNumber={stageNumber}
+                  totalStages={stageOrder.length}
+                  hint={STAGE_HINTS[currentStageId]}
+                  value={currentStage.userText}
+                  onChange={(v) =>
+                    setStages((prev) => ({
+                      ...prev,
+                      [currentStageId]: { ...prev[currentStageId], userText: v, feedback: null },
+                    }))
+                  }
+                  onGetFeedback={handleGetFeedback}
+                  onApprove={handleApprove}
+                  onContinueAnyway={handleContinueAnyway}
+                  feedback={currentStage.feedback}
+                  loading={loading}
+                  turns={currentStage.turns}
+                />
+
+                {warnConfirm && (
+                  <div className="rounded-md border border-yellow-300 bg-yellow-50 p-4 text-sm">
+                    <p className="font-medium text-yellow-900">
+                      This section needs improvement and may affect your final band score. Proceed
+                      anyway?
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button size="sm" variant="destructive" onClick={confirmContinueAnyway}>
+                        Yes, continue anyway
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setWarnConfirm(false)}>
+                        Go back and improve
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {currentStage.feedback && !warnConfirm && (
+                  <FeedbackPanel
+                    feedback={currentStage.feedback}
+                    userText={currentStage.userText}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </main>
+
+        <aside className="w-56 shrink-0 overflow-y-auto border-l">
+          <StageTracker
+            stages={trackerStages}
+            currentStageId={currentStageId}
+            onStageClick={handleStageClick}
+            canSynthesize={canSynthesize}
+            onSynthesize={() => {
+              setCurrentStageId('synthesis');
+              setStages((prev) => ({
+                ...prev,
+                synthesis: {
+                  ...prev.synthesis,
+                  state: 'in_progress',
+                  userText: assembleEssay(prev),
+                },
+              }));
+            }}
+          />
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function BodyChoicePanel({
+  onAddThird,
+  onSkip,
+}: {
+  onAddThird: () => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-6">
+      <h2 className="mb-1 text-base font-semibold">Body paragraphs complete</h2>
+      <p className="mb-5 text-sm text-muted-foreground">
+        You have two body paragraphs. IELTS Task 2 essays typically need two strong body paragraphs
+        to reach Band 7. A third is optional — add one if you have a strong additional argument.
+      </p>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Button onClick={onAddThird} variant="outline" className="flex-1">
+          Add 3rd Body Paragraph
+        </Button>
+        <Button onClick={onSkip} className="flex-1">
+          Continue to Conclusion
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const MAX_TURNS = 8;
+
+interface SynthesisPanelProps {
+  feedback: StageFeedback | null;
+  assembledEssay: string;
+  loading: boolean;
+  turns: number;
+  onGetSynthesis: () => void;
+}
+
+function SynthesisPanel({
+  feedback,
+  assembledEssay,
+  loading,
+  turns,
+  onGetSynthesis,
+}: SynthesisPanelProps) {
+  const turnsExhausted = turns >= MAX_TURNS;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-lg border bg-card p-5">
+        <div className="mb-3">
+          <span className="text-xs text-muted-foreground">Final stage</span>
+          <h2 className="text-base font-semibold">Final Synthesis</h2>
+        </div>
+        <p className="mb-3 text-sm text-muted-foreground">{STAGE_HINTS.synthesis}</p>
+
+        <Textarea
+          value={assembledEssay}
+          readOnly
+          className="min-h-[220px] resize-none bg-muted text-sm"
+        />
+
+        {turnsExhausted && (
+          <p className="mt-2 text-xs text-destructive">
+            You have used all {MAX_TURNS} synthesis turns for this session.
+          </p>
+        )}
+
+        <div className="mt-4">
+          <Button
+            onClick={onGetSynthesis}
+            disabled={loading || turnsExhausted || !assembledEssay.trim()}
+            size="sm"
+          >
+            {loading ? 'Analysing...' : `Get Synthesis (${turns}/${MAX_TURNS})`}
+          </Button>
+        </div>
+      </div>
+
+      {feedback?.bands && (
+        <div className="rounded-lg border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold">Band Score Estimates</h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(['TR', 'CC', 'LR', 'GRA'] as const).map((criterion) => (
+              <div key={criterion} className="rounded-md border p-3 text-center">
+                <p className="text-xs font-medium text-muted-foreground">{criterion}</p>
+                <p className="mt-1 text-2xl font-bold">{feedback.bands![criterion].toFixed(1)}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-md bg-accent p-3 text-center">
+            <p className="text-xs font-medium text-muted-foreground">Overall Estimate</p>
+            <p className="mt-1 text-3xl font-bold">{feedback.bands.overall.toFixed(1)}</p>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            These are AI estimates only — not official IELTS scores. Verify with a qualified
+            examiner.
+          </p>
+        </div>
+      )}
+
+      {feedback?.topImprovements && feedback.topImprovements.length > 0 && (
+        <div className="rounded-lg border bg-card p-5">
+          <h3 className="mb-3 text-sm font-semibold">Top Improvements</h3>
+          <ol className="flex flex-col gap-2">
+            {feedback.topImprovements.map((tip, i) => (
+              <li key={i} className="flex gap-2 text-sm">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+                  {i + 1}
+                </span>
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {feedback && <FeedbackPanel feedback={feedback} userText={assembledEssay} />}
+    </div>
+  );
+}

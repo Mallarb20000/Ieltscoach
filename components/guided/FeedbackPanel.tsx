@@ -24,8 +24,12 @@ const criterionLabels: Record<Finding['rubricCriterion'], string> = {
 
 function FindingCard({ finding }: { finding: Finding }) {
   return (
-    <div className="rounded-md border bg-muted/30 p-3 text-sm">
-      <p className="mb-1 italic text-muted-foreground">"{finding.evidenceQuote}"</p>
+    <div
+      className={`rounded-md border border-l-2 bg-muted/30 p-3 text-sm ${
+        finding.severity === 'major' ? 'border-l-destructive/50' : 'border-l-primary/30'
+      }`}
+    >
+      <p className="mb-1 font-serif italic text-muted-foreground">"{finding.evidenceQuote}"</p>
       <p className="font-medium">{finding.issue}</p>
       <p className="mt-0.5 text-muted-foreground">{finding.suggestion}</p>
       <div className="mt-2 flex gap-1.5">
@@ -47,9 +51,9 @@ export function FeedbackPanel({ feedback }: Props) {
   const { label, className } = ratingConfig[feedback.rating];
 
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
-        <h3 className="font-semibold">Feedback</h3>
+        <h3 className="font-display text-lg font-semibold">Feedback</h3>
         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${className}`}>
           {label}
         </span>
@@ -72,9 +76,11 @@ export function FeedbackPanel({ feedback }: Props) {
       )}
 
       {feedback.rewriteExample && (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-medium">Rewrite example</summary>
-          <div className="mt-2 rounded-md border bg-muted/40 p-3 text-sm italic">
+        <details className="group mt-4">
+          <summary className="cursor-pointer text-sm font-medium text-primary transition-colors hover:text-primary/80">
+            Rewrite example
+          </summary>
+          <div className="mt-2 rounded-md border border-primary/20 bg-accent/40 p-3 font-serif text-sm italic leading-6">
             {feedback.rewriteExample}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">

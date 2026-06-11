@@ -74,19 +74,25 @@ export function FinalReport({ draft, sections, feedback }: Props) {
   return (
     <div className="flex flex-col gap-5">
       {feedback.bands && (
-        <div className="rounded-lg border bg-card p-5">
-          <h3 className="mb-4 text-sm font-semibold">Band Score Estimates</h3>
+        <div className="animate-rise rounded-xl border bg-card p-6 shadow-sm">
+          <h3 className="mb-4 font-display text-lg font-semibold">Band Score Estimates</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {(['TR', 'CC', 'LR', 'GRA'] as const).map((criterion) => (
-              <div key={criterion} className="rounded-md border p-3 text-center">
+              <div key={criterion} className="rounded-lg border p-3 text-center">
                 <p className="text-xs font-medium text-muted-foreground">{criterion}</p>
-                <p className="mt-1 text-2xl font-bold">{feedback.bands![criterion].toFixed(1)}</p>
+                <p className="mt-1 font-display text-2xl font-semibold">
+                  {feedback.bands![criterion].toFixed(1)}
+                </p>
               </div>
             ))}
           </div>
-          <div className="mt-4 rounded-md bg-accent p-3 text-center">
-            <p className="text-xs font-medium text-muted-foreground">Overall Estimate</p>
-            <p className="mt-1 text-3xl font-bold">{feedback.bands.overall.toFixed(1)}</p>
+          <div className="mt-4 rounded-lg bg-primary p-4 text-center text-primary-foreground">
+            <p className="text-xs font-medium uppercase tracking-wider opacity-80">
+              Overall Estimate
+            </p>
+            <p className="mt-1 font-display text-4xl font-semibold">
+              {feedback.bands.overall.toFixed(1)}
+            </p>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             These are AI estimates only — not official IELTS scores. Verify with a qualified
@@ -95,14 +101,14 @@ export function FinalReport({ draft, sections, feedback }: Props) {
         </div>
       )}
 
-      <div className="rounded-lg border bg-card p-5">
-        <h3 className="mb-1 text-sm font-semibold">Your Essay</h3>
+      <div className="animate-rise rise-1 rounded-xl border bg-card p-6 shadow-sm">
+        <h3 className="mb-1 font-display text-lg font-semibold">Your Essay</h3>
         <p className="mb-4 text-xs text-muted-foreground">
           Highlights show your approved structure. Unhighlighted text is detail you added during
           final editing.
         </p>
         <div className="flex flex-col gap-5 sm:flex-row">
-          <p className="flex-1 whitespace-pre-wrap text-sm leading-7">
+          <p className="flex-1 whitespace-pre-wrap font-serif text-[15px] leading-8">
             {segments.map((seg, i) =>
               seg.section ? (
                 <span
@@ -142,8 +148,8 @@ export function FinalReport({ draft, sections, feedback }: Props) {
       </div>
 
       {feedback.topImprovements && feedback.topImprovements.length > 0 && (
-        <div className="rounded-lg border bg-card p-5">
-          <h3 className="mb-3 text-sm font-semibold">Top Improvements</h3>
+        <div className="animate-rise rise-2 rounded-xl border bg-card p-6 shadow-sm">
+          <h3 className="mb-3 font-display text-lg font-semibold">Top Improvements</h3>
           <ol className="flex flex-col gap-2">
             {feedback.topImprovements.map((tip, i) => (
               <li key={i} className="flex gap-2 text-sm">

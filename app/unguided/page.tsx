@@ -60,17 +60,20 @@ export default function UnguidedPage() {
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="flex-1 p-6">
       <div className="mx-auto flex max-w-2xl flex-col gap-5">
-        <div>
-          <h1 className="text-xl font-semibold">Full Essay Analysis</h1>
-          <p className="text-sm text-muted-foreground">
+        <div className="animate-rise">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Unguided mode
+          </p>
+          <h1 className="mt-2 font-display text-2xl font-semibold">Full Essay Analysis</h1>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Paste a complete IELTS Writing Task 2 essay to get band score estimates and
             paragraph-by-paragraph feedback.
           </p>
         </div>
 
-        <div className="rounded-lg border bg-card p-5">
+        <div className="animate-rise rise-1 rounded-xl border bg-card p-6 shadow-sm">
           <label className="mb-1 block text-sm font-medium">Task 2 question</label>
           <Textarea
             value={prompt}
@@ -95,7 +98,7 @@ export default function UnguidedPage() {
               setResult(null);
             }}
             placeholder="Paste or type your full essay here..."
-            className="min-h-[260px] text-sm"
+            className="min-h-[260px] font-serif text-[15px] leading-7"
             disabled={loading}
           />
 
@@ -135,19 +138,25 @@ export default function UnguidedPage() {
 function AnalysisResult({ result }: { result: FullEssayFeedback }) {
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-lg border bg-card p-5">
-        <h2 className="mb-4 text-sm font-semibold">Band Score Estimates</h2>
+      <div className="animate-rise rounded-xl border bg-card p-6 shadow-sm">
+        <h2 className="mb-4 font-display text-lg font-semibold">Band Score Estimates</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(['TR', 'CC', 'LR', 'GRA'] as const).map((criterion) => (
-            <div key={criterion} className="rounded-md border p-3 text-center">
+            <div key={criterion} className="rounded-lg border p-3 text-center">
               <p className="text-xs font-medium text-muted-foreground">{criterion}</p>
-              <p className="mt-1 text-2xl font-bold">{result.bands[criterion].toFixed(1)}</p>
+              <p className="mt-1 font-display text-2xl font-semibold">
+                {result.bands[criterion].toFixed(1)}
+              </p>
             </div>
           ))}
         </div>
-        <div className="mt-4 rounded-md bg-accent p-3 text-center">
-          <p className="text-xs font-medium text-muted-foreground">Overall Estimate</p>
-          <p className="mt-1 text-3xl font-bold">{result.bands.overall.toFixed(1)}</p>
+        <div className="mt-4 rounded-lg bg-primary p-4 text-center text-primary-foreground">
+          <p className="text-xs font-medium uppercase tracking-wider opacity-80">
+            Overall Estimate
+          </p>
+          <p className="mt-1 font-display text-4xl font-semibold">
+            {result.bands.overall.toFixed(1)}
+          </p>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           These are AI estimates only — not official IELTS scores. Verify with a qualified
@@ -156,8 +165,8 @@ function AnalysisResult({ result }: { result: FullEssayFeedback }) {
       </div>
 
       {result.topImprovements.length > 0 && (
-        <div className="rounded-lg border bg-card p-5">
-          <h2 className="mb-3 text-sm font-semibold">Top Improvements</h2>
+        <div className="animate-rise rise-1 rounded-xl border bg-card p-6 shadow-sm">
+          <h2 className="mb-3 font-display text-lg font-semibold">Top Improvements</h2>
           <ol className="flex flex-col gap-2">
             {result.topImprovements.map((tip, i) => (
               <li key={i} className="flex gap-2 text-sm">
@@ -171,22 +180,31 @@ function AnalysisResult({ result }: { result: FullEssayFeedback }) {
         </div>
       )}
 
-      <div className="rounded-lg border bg-card p-5">
-        <h2 className="mb-4 text-sm font-semibold">Paragraph Feedback</h2>
-        <div className="flex flex-col gap-5">
+      <div className="animate-rise rise-2 rounded-xl border bg-card p-6 shadow-sm">
+        <h2 className="mb-4 font-display text-lg font-semibold">Paragraph Feedback</h2>
+        <div className="flex flex-col gap-6">
           {result.paragraphFeedback.map((pf, i) => (
             <div key={i}>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">
                 Paragraph {i + 1}
               </p>
-              <p className="mb-2.5 rounded-md bg-muted/40 p-3 text-sm">{pf.paragraph}</p>
+              <p className="mb-2.5 rounded-md border-l-2 border-l-primary/30 bg-muted/40 p-3 font-serif text-sm leading-7">
+                {pf.paragraph}
+              </p>
               {pf.findings.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No issues found.</p>
               ) : (
                 <div className="flex flex-col gap-2.5">
                   {pf.findings.map((f, j) => (
-                    <div key={j} className="rounded-md border bg-muted/30 p-3 text-sm">
-                      <p className="mb-1 italic text-muted-foreground">"{f.evidenceQuote}"</p>
+                    <div
+                      key={j}
+                      className={`rounded-md border border-l-2 bg-muted/30 p-3 text-sm ${
+                        f.severity === 'major' ? 'border-l-destructive/50' : 'border-l-primary/30'
+                      }`}
+                    >
+                      <p className="mb-1 font-serif italic text-muted-foreground">
+                        "{f.evidenceQuote}"
+                      </p>
                       <p className="font-medium">{f.issue}</p>
                       <p className="mt-0.5 text-muted-foreground">{f.suggestion}</p>
                       <div className="mt-2 flex gap-1.5">

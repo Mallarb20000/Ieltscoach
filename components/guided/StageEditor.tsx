@@ -62,13 +62,13 @@ export function StageEditor({
   const showContinueAnyway = feedback?.rating === 'needs_improvement';
 
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
       <div className="mb-3 flex items-baseline justify-between">
         <div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
             Stage {stageNumber} of {totalStages}
           </span>
-          <h2 className="text-base font-semibold">{stageLabel}</h2>
+          <h2 className="mt-0.5 font-display text-xl font-semibold">{stageLabel}</h2>
         </div>
         <span
           className={`text-xs ${outsideTarget ? 'font-medium text-amber-600' : 'text-muted-foreground'}`}
@@ -85,7 +85,7 @@ export function StageEditor({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Write here..."
-        className="min-h-[80px] resize-none overflow-hidden text-sm"
+        className="min-h-[88px] resize-none overflow-hidden font-serif text-[15px] leading-7"
         disabled={loading}
       />
 

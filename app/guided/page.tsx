@@ -334,10 +334,15 @@ export default function GuidedPage() {
 
   if (!topicSet) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="w-full max-w-xl rounded-lg border bg-card p-8 shadow-sm">
-          <h1 className="mb-1 text-xl font-semibold">Start a new session</h1>
-          <p className="mb-5 text-sm text-muted-foreground">
+      <div className="bg-ruled flex flex-1 items-center justify-center p-6">
+        <div className="animate-rise w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Guided session
+          </p>
+          <h1 className="mb-1 mt-2 font-display text-2xl font-semibold">
+            Start with a question
+          </h1>
+          <p className="mb-5 text-sm leading-6 text-muted-foreground">
             Here is a real Task 2 question to practise with. Try another, or replace it with your
             own question.
           </p>
@@ -373,9 +378,9 @@ export default function GuidedPage() {
 
   if (editingTopic) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="w-full max-w-xl rounded-lg border bg-card p-8 shadow-sm">
-          <h1 className="mb-1 text-xl font-semibold">Edit prompt</h1>
+      <div className="bg-ruled flex flex-1 items-center justify-center p-6">
+        <div className="animate-rise w-full max-w-xl rounded-xl border bg-card p-8 shadow-sm">
+          <h1 className="mb-1 font-display text-2xl font-semibold">Edit prompt</h1>
           <Textarea
             value={topicDraft || topic}
             onChange={(e) => setTopicDraft(e.target.value)}
@@ -400,7 +405,7 @@ export default function GuidedPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden">
       <TopicHeader
         topic={topic}
         canEdit={!anyStageApproved}
@@ -412,7 +417,10 @@ export default function GuidedPage() {
 
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto flex max-w-2xl flex-col gap-5">
+          <div
+            key={showBodyChoice ? 'body-choice' : currentStageId}
+            className="animate-rise mx-auto flex max-w-2xl flex-col gap-5"
+          >
             {feedbackError && (
               <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm">
                 <p className="text-red-900">{feedbackError}</p>
@@ -538,8 +546,8 @@ function BodyChoicePanel({
   onSkip: () => void;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-6">
-      <h2 className="mb-1 text-base font-semibold">Body paragraphs complete</h2>
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <h2 className="mb-1 font-display text-xl font-semibold">Body paragraphs complete</h2>
       <p className="mb-5 text-sm text-muted-foreground">
         You have two body paragraphs. IELTS Task 2 essays typically need two strong body paragraphs
         to reach Band 7. A third is optional — add one if you have a strong additional argument.
@@ -584,10 +592,12 @@ function SynthesisPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-xl border bg-card p-6 shadow-sm">
         <div className="mb-3">
-          <span className="text-xs text-muted-foreground">Final stage</span>
-          <h2 className="text-base font-semibold">Final Synthesis</h2>
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+            Final stage
+          </span>
+          <h2 className="mt-0.5 font-display text-xl font-semibold">Final Synthesis</h2>
         </div>
         <p className="mb-3 text-sm text-muted-foreground">{STAGE_HINTS.synthesis}</p>
 
@@ -595,7 +605,7 @@ function SynthesisPanel({
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           placeholder="Your approved structure will appear here..."
-          className="min-h-[280px] text-sm"
+          className="min-h-[280px] font-serif text-[15px] leading-7"
           disabled={loading}
         />
 

@@ -7,9 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-schibsted);
+  --font-display: var(--font-fraunces);
+  --font-serif: var(--font-fraunces);
+  --font-heading: var(--font-fraunces);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,38 +50,39 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Warm editorial palette: paper, ink, Himalayan pine */
+  --background: oklch(0.972 0.009 84);
+  --foreground: oklch(0.275 0.014 65);
+  --card: oklch(0.993 0.005 88);
+  --card-foreground: oklch(0.275 0.014 65);
+  --popover: oklch(0.993 0.005 88);
+  --popover-foreground: oklch(0.275 0.014 65);
+  --primary: oklch(0.46 0.072 182);
+  --primary-foreground: oklch(0.98 0.008 88);
+  --secondary: oklch(0.938 0.013 84);
+  --secondary-foreground: oklch(0.33 0.016 65);
+  --muted: oklch(0.938 0.013 84);
+  --muted-foreground: oklch(0.5 0.018 70);
+  --accent: oklch(0.93 0.022 175);
+  --accent-foreground: oklch(0.32 0.05 182);
+  --destructive: oklch(0.55 0.2 27);
+  --border: oklch(0.897 0.013 80);
+  --input: oklch(0.897 0.013 80);
+  --ring: oklch(0.55 0.07 182);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.96 0.01 84);
+  --sidebar-foreground: oklch(0.275 0.014 65);
+  --sidebar-primary: oklch(0.46 0.072 182);
+  --sidebar-primary-foreground: oklch(0.98 0.008 88);
+  --sidebar-accent: oklch(0.93 0.022 175);
+  --sidebar-accent-foreground: oklch(0.32 0.05 182);
+  --sidebar-border: oklch(0.897 0.013 80);
+  --sidebar-ring: oklch(0.55 0.07 182);
 }
 
 .dark {
@@ -126,5 +128,54 @@
   }
   html {
     @apply font-sans;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-fraunces);
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background: oklch(0.46 0.072 182 / 0.22);
+  }
+  textarea {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+}
+
+@layer utilities {
+  /* Staggered entrance: pair .animate-rise with .rise-1 ... .rise-5 */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-rise {
+    animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .rise-1 { animation-delay: 70ms; }
+  .rise-2 { animation-delay: 140ms; }
+  .rise-3 { animation-delay: 220ms; }
+  .rise-4 { animation-delay: 300ms; }
+  .rise-5 { animation-delay: 380ms; }
+
+  /* Ruled notebook paper, used as a quiet hero backdrop */
+  .bg-ruled {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      oklch(0.46 0.072 182 / 0.07) 31px,
+      oklch(0.46 0.072 182 / 0.07) 32px
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise {
+      animation: none;
+    }
   }
 }

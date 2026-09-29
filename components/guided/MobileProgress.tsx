@@ -41,12 +41,15 @@ export function MobileProgress({
           {stages.map((s) => {
             const done = s.state === 'approved' || s.state === 'warned_pass';
             const isCurrent = s.id === currentStageId;
+            const isClickable =
+              !isCurrent && (s.state !== 'locked' || (s.id === 'synthesis' && canSynthesize));
             return (
               <button
                 key={s.id}
                 aria-label={s.label}
-                onClick={() => done && onStageClick(s.id)}
-                disabled={!done}
+                aria-current={isCurrent ? 'step' : undefined}
+                onClick={() => isClickable && onStageClick(s.id)}
+                disabled={!isClickable}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
                   isCurrent
                     ? 'bg-primary/40 ring-1 ring-primary'
@@ -54,7 +57,9 @@ export function MobileProgress({
                       ? s.state === 'warned_pass'
                         ? 'bg-amber-400'
                         : 'bg-primary'
-                      : 'bg-secondary'
+                      : s.state === 'in_progress'
+                        ? 'bg-primary/30'
+                        : 'bg-secondary'
                 }`}
               />
             );

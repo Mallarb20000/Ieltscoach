@@ -354,11 +354,14 @@ export default function GuidedPage() {
   }
 
   function handleStageClick(id: StageId) {
-    setStages((prev) => ({ ...prev, [id]: { ...prev[id], state: 'in_progress' } }));
-    setCurrentStageId(id);
     setWarnConfirm(false);
     setShowBodyChoice(false);
     setFeedbackError(null);
+    if (id === 'synthesis') {
+      openSynthesis();
+      return;
+    }
+    setCurrentStageId(id);
   }
 
   function addThirdBody() {
@@ -561,9 +564,15 @@ export default function GuidedPage() {
                   hint={STAGE_HINTS[currentStageId]}
                   value={currentStage.userText}
                   onChange={(v) =>
+                    // Editing invalidates any prior approval — the new text hasn't been reviewed
                     setStages((prev) => ({
                       ...prev,
-                      [currentStageId]: { ...prev[currentStageId], userText: v, feedback: null },
+                      [currentStageId]: {
+                        ...prev[currentStageId],
+                        userText: v,
+                        feedback: null,
+                        state: 'in_progress',
+                      },
                     }))
                   }
                   onGetFeedback={handleGetFeedback}

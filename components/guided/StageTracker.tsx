@@ -18,7 +18,7 @@ interface Props {
   onSynthesize: () => void;
 }
 
-function StateIcon({ state }: { state: StageState }) {
+function StateIcon({ state, isCurrent }: { state: StageState; isCurrent: boolean }) {
   switch (state) {
     case 'approved':
       return (
@@ -34,8 +34,12 @@ function StateIcon({ state }: { state: StageState }) {
       );
     case 'in_progress':
       return (
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card ring-2 ring-primary">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+        <span
+          className={`flex h-5 w-5 items-center justify-center rounded-full bg-card ${isCurrent ? 'ring-2 ring-primary' : 'ring-1 ring-primary/50'}`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${isCurrent ? 'animate-pulse bg-primary' : 'bg-primary/40'}`}
+          />
         </span>
       );
     case 'locked':
@@ -50,10 +54,11 @@ export function StageTracker({
   canSynthesize,
   onSynthesize,
 }: Props) {
-  const doneCount = stages.filter(
+  const writingStages = stages.filter((s) => s.id !== 'synthesis');
+  const doneCount = writingStages.filter(
     (s) => s.state === 'approved' || s.state === 'warned_pass'
   ).length;
-  const progress = Math.round((doneCount / stages.length) * 100);
+  const progress = Math.round((doneCount / writingStages.length) * 100);
 
   return (
     <div className="flex h-full flex-col justify-between p-4">
@@ -63,7 +68,7 @@ export function StageTracker({
             Progress
           </p>
           <span className="font-display text-xs font-semibold text-primary">
-            {doneCount}/{stages.length}
+            {doneCount}/{writingStages.length}
           </span>
         </div>
         <div className="mb-4 h-1 overflow-hidden rounded-full bg-secondary">
@@ -78,24 +83,28 @@ export function StageTracker({
             className="absolute bottom-4 left-[1.125rem] top-4 w-px bg-border"
           />
           {stages.map((s) => {
-            const isClickable = s.state === 'approved' || s.state === 'warned_pass';
             const isCurrent = s.id === currentStageId;
+            const isReachable =
+              s.state !== 'locked' || (s.id === 'synthesis' && canSynthesize);
+            const isClickable = isReachable && !isCurrent;
             return (
               <li key={s.id}>
                 <button
                   onClick={() => isClickable && onStageClick(s.id)}
-                  disabled={!isClickable}
+                  disabled={!isReachable}
+                  aria-current={isCurrent ? 'step' : undefined}
+                  title={isReachable ? undefined : 'Finish the earlier stages first'}
                   className={[
-                    'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors duration-200',
+                    'flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors duration-200',
                     isCurrent ? 'bg-accent font-medium text-accent-foreground' : '',
                     isClickable ? 'cursor-pointer hover:bg-secondary' : 'cursor-default',
-                    s.state === 'locked' ? 'text-muted-foreground/70' : '',
+                    isReachable ? '' : 'text-muted-foreground/70',
                   ].join(' ')}
                 >
                   <span className="relative z-10 flex shrink-0 items-center justify-center">
-                    <StateIcon state={s.state} />
+                    <StateIcon state={s.state} isCurrent={isCurrent} />
                   </span>
-                  <span className="truncate">{s.label}</span>
+                  <span className="pt-px leading-snug">{s.label}</span>
                 </button>
               </li>
             );

@@ -10,6 +10,7 @@ export type StageId =
   | 'body-paragraph-3'
   | 'conclusion'
   | 'synthesis';
+  
 
 export interface StageInput {
   stage: StageId;
